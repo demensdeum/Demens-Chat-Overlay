@@ -91,6 +91,7 @@ namespace TransparentTwitchChatWPF
     using System.Windows.Controls;
     using System.Runtime.InteropServices;
     using System.Collections;
+    using System.Speech.Synthesis;
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -1238,11 +1239,19 @@ namespace TransparentTwitchChatWPF
             }
         }
 
-        public void playSound(string nick)
+        public void playSound(string nick, string message)
         {
-            MediaPlayer mediaPlayer = new MediaPlayer();
-            mediaPlayer.Open(new System.Uri(this.getSoundForNick(nick)));
-            mediaPlayer.Play();
+            if (message.Length > 30 && message.Length > 100)
+            {
+                var speechSynthesizer = new SpeechSynthesizer();
+                speechSynthesizer.Speak(message);
+            }
+            else
+            {
+                MediaPlayer mediaPlayer = new MediaPlayer();
+                mediaPlayer.Open(new System.Uri(this.getSoundForNick(nick)));
+                mediaPlayer.Play();
+            }
         }
 
         public void showMessageBox(string msg)
