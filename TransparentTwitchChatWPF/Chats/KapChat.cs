@@ -142,7 +142,7 @@ namespace TransparentTwitchChatWPF.Chats
                                 }
 
                                 (async function() {
-                                    await jsCallback.playSound();
+                                    await jsCallback.playSound(nick);
                                 })();
                                 return oldChatInsert.apply(oldChatInsert, arguments);
                             }";

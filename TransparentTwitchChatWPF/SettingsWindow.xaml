@@ -337,7 +337,7 @@
                 </TextBlock>
                 <Label 
                     Margin="0,50,0,0"
-                    Content="Created by Baffler" />
+                    Content="Created by ВАФЛЕР" />
                 <Label 
                     Margin="0,70,0,0">
                     <Hyperlink NavigateUri = "https://github.com/baffler/Transparent-Twitch-Chat-Overlay"

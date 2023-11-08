@@ -90,6 +90,7 @@ namespace TransparentTwitchChatWPF
     using System.IO;
     using System.Windows.Controls;
     using System.Runtime.InteropServices;
+    using System.Collections;
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -1113,11 +1114,27 @@ namespace TransparentTwitchChatWPF
                 ExitApplication();
         }
     }
+    static class RandomExtensions
+    {
+        public static void Shuffle<T>(this Random rng, T[] array)
+        {
+            int n = array.Length;
+            while (n > 1)
+            {
+                int k = rng.Next(n--);
+                T temp = array[n];
+                array[n] = array[k];
+                array[k] = temp;
+            }
+        }
+    }
 
     [ClassInterface(ClassInterfaceType.AutoDual)]
     [ComVisible(true)]
     public class JsCallbackFunctions
     {
+        private Dictionary<String, String> nickToSound = new Dictionary<String, String>();
+        private Dictionary<String, String> soundToNick = new Dictionary<String, String>();
         private string _mediaFile;
         private AudioFileReader _audioFileReader;
         private WaveOutEvent _waveOutDevice;
@@ -1189,19 +1206,43 @@ namespace TransparentTwitchChatWPF
             _waveOutDevice.Init(_audioFileReader);
         }
 
-        public void playSound()
+        private string getSoundForNick(String nick)
         {
-            try
+            var soundsDirectory = SettingsSingleton.Instance.genSettings.SoundClipsFolder;
+            nickToSound["inspectorl2"] = soundsDirectory + "\\\\" + "icq.mp3";
+
+            if (nickToSound.ContainsKey(nick))
             {
-                if (!string.IsNullOrEmpty(_mediaFile))
-                {
-                    if ((_waveOutDevice != null) && (_audioFileReader != null))
-                    {
-                        _audioFileReader.Position = 0;
-                        _waveOutDevice.Play();
+                return nickToSound[nick];
+            }
+            else
+            {
+                var allFiles = Directory.GetFiles(soundsDirectory);
+                new Random().Shuffle(allFiles);
+                var randomFiles = allFiles.ToList();
+
+                while (randomFiles.Count > 0) {
+                    var file = randomFiles.First();
+                    if (soundToNick.ContainsKey(file)) {
+                        randomFiles.RemoveAt(0);
+                        continue;
                     }
+                    nickToSound[nick] = file;
+                    soundToNick[file] = nick;
+                    return file;
                 }
-            } catch (Exception ex) { MessageBox.Show(ex.Message); }
+
+                var randomFile = allFiles.First();
+
+                return randomFile;
+            }
+        }
+
+        public void playSound(string nick)
+        {
+            MediaPlayer mediaPlayer = new MediaPlayer();
+            mediaPlayer.Open(new System.Uri(this.getSoundForNick(nick)));
+            mediaPlayer.Play();
         }
 
         public void showMessageBox(string msg)
