@@ -4,3 +4,4 @@ Fork of [baffler/Transparent-Twitch-Chat-Overlay](baffler/Transparent-Twitch-Cha
 
 Funny features:
 - Random sounds for each chat participant.
+- Reading long chat messages in TTS, with switching voice from message language.

@@ -92,6 +92,9 @@ namespace TransparentTwitchChatWPF
     using System.Runtime.InteropServices;
     using System.Collections;
     using System.Speech.Synthesis;
+    using System.Text.RegularExpressions;
+    using System.Threading;
+    using System.Collections.Concurrent;
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -157,7 +160,7 @@ namespace TransparentTwitchChatWPF
             string userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TransparentTwitchChatWPF");
             CoreWebView2Environment cwv2Environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
             await webView.EnsureCoreWebView2Async(cwv2Environment);
-            
+
             this.jsCallbackFunctions = new JsCallbackFunctions();
             webView.CoreWebView2.AddHostObjectToScript("jsCallbackFunctions", this.jsCallbackFunctions);
 
@@ -446,7 +449,7 @@ namespace TransparentTwitchChatWPF
 
         private void webView_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
         {
-            
+
         }
 
         private async void webView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
@@ -456,9 +459,10 @@ namespace TransparentTwitchChatWPF
                 return;
             }
 
-            this.webView.Dispatcher.Invoke(new Action(() => {
+            this.webView.Dispatcher.Invoke(new Action(() =>
+            {
                 if (SettingsSingleton.Instance.genSettings.ZoomLevel > 0)
-                    this.webView.ZoomFactor = SettingsSingleton.Instance.genSettings.ZoomLevel; 
+                    this.webView.ZoomFactor = SettingsSingleton.Instance.genSettings.ZoomLevel;
             }));
 
             if (SettingsSingleton.Instance.genSettings.ChatType == (int)ChatTypes.TwitchPopout)
@@ -864,7 +868,7 @@ namespace TransparentTwitchChatWPF
         }
         private void webView_ContentLoading(object sender, Microsoft.Web.WebView2.Core.CoreWebView2ContentLoadingEventArgs e)
         {
-            
+
         }
 
         private void SetupBrowser()
@@ -1045,12 +1049,14 @@ namespace TransparentTwitchChatWPF
                 try { _pubSub.OnChannelPointsRewardRedeemed -= _pubSub_OnChannelPointsRewardRedeemed; }
                 catch { }
 
-                try {
+                try
+                {
                     _isPubSubConnected = false;
                     if (_isPubSubConnected)
                         _pubSub.Disconnect();
                 }
-                catch (Exception e) {
+                catch (Exception e)
+                {
                     Debug.WriteLine(e.Message);
                 }
             }
@@ -1117,12 +1123,12 @@ namespace TransparentTwitchChatWPF
     }
     static class RandomExtensions
     {
-        public static void Shuffle<T>(this Random rng, T[] array)
+        public static void Shuffle<T>(this Random random, T[] array)
         {
             int n = array.Length;
             while (n > 1)
             {
-                int k = rng.Next(n--);
+                int k = random.Next(n--);
                 T temp = array[n];
                 array[n] = array[k];
                 array[k] = temp;
@@ -1130,16 +1136,32 @@ namespace TransparentTwitchChatWPF
         }
     }
 
+    static class StringExtension
+    {
+        public static bool isRussian(this string text)
+        {
+            Regex regex = new Regex(@"[\p{IsCyrillic}]");
+            Match match = regex.Match(text);
+            var isSuccess = match.Success;
+            return isSuccess;
+        }
+
+        public static bool isShort(this string text)
+        {
+            return text.Length < 3;
+        }
+    }
+
     [ClassInterface(ClassInterfaceType.AutoDual)]
     [ComVisible(true)]
     public class JsCallbackFunctions
     {
-        private Dictionary<String, String> nickToSound = new Dictionary<String, String>();
-        private Dictionary<String, String> soundToNick = new Dictionary<String, String>();
+        private ConcurrentDictionary<String, String> nickToSound = new ConcurrentDictionary<String, String>();
+        private ConcurrentDictionary<String, String> soundToNick = new ConcurrentDictionary<String, String>();
         private string _mediaFile;
         private AudioFileReader _audioFileReader;
         private WaveOutEvent _waveOutDevice;
-        
+
         public string MediaFile
         {
             get { return _mediaFile; }
@@ -1222,9 +1244,11 @@ namespace TransparentTwitchChatWPF
                 new Random().Shuffle(allFiles);
                 var randomFiles = allFiles.ToList();
 
-                while (randomFiles.Count > 0) {
+                while (randomFiles.Count > 0)
+                {
                     var file = randomFiles.First();
-                    if (soundToNick.ContainsKey(file)) {
+                    if (soundToNick.ContainsKey(file))
+                    {
                         randomFiles.RemoveAt(0);
                         continue;
                     }
@@ -1239,19 +1263,114 @@ namespace TransparentTwitchChatWPF
             }
         }
 
+        object isReadingLock = new object();
+        protected bool _isReading;
+        public bool isReading
+        {
+            get
+            {
+                lock (isReadingLock)
+                    return _isReading;
+            }
+            set
+            {
+                lock (isReadingLock)
+                    _isReading = value;
+            }
+        }
+
+        BlockingCollection<Tuple<string, string>> messagesToRead = new BlockingCollection<Tuple<string, string>>();
+
+        void popAndRead()
+        {
+            if (messagesToRead.Count < 1) { 
+                return; 
+            }
+            Tuple<string, string> message;
+            messagesToRead.TryTake(out message);
+
+            Task.Run(() =>
+            {
+                var nick = message.Item1;
+                var text = message.Item2;
+                read(nick, text);
+            });
+        }
+
+        private void scheduleOrRead(string nick, string message)
+        {
+            messagesToRead.Add(new Tuple<string, string>(nick, message));
+            if (isReading != true)
+            {
+                popAndRead();
+            }
+        }
+
         public void playSound(string nick, string message)
         {
-            if (message.Length > 30 && message.Length > 100)
+            if (message.isShort())
             {
-                var speechSynthesizer = new SpeechSynthesizer();
-                speechSynthesizer.Speak(message);
+                Task.Run(() =>
+                {
+                    var mediaPlayer = new MediaPlayer();
+                    mediaPlayer.Open(new Uri(this.getSoundForNick(nick)));
+                    mediaPlayer.Play();
+                });
             }
             else
             {
-                MediaPlayer mediaPlayer = new MediaPlayer();
-                mediaPlayer.Open(new System.Uri(this.getSoundForNick(nick)));
-                mediaPlayer.Play();
+                scheduleOrRead(nick, message);
             }
+        }
+
+        enum TextTokenType
+        {
+            None,
+            Russian,
+            English
+        };
+
+        private void read(string nick, string message)
+        {
+            isReading = true;
+            message = nick + " говорит: " + message;
+
+            var speechSynthesizer = new SpeechSynthesizer();
+            speechSynthesizer.Rate = 3;
+            var delimiters = new char[] { ' ', ',', '.', '!', '?', '\r', '\n' };
+            var tokens = message.Split(delimiters, StringSplitOptions.RemoveEmptyEntries);
+
+            var tokensByGroups = new List<String>();
+            var currentGroup = "";
+            var previousTokenType = TextTokenType.None;
+
+            foreach (var token in tokens)
+            {
+                var tokenType = token.isRussian() ? TextTokenType.Russian : TextTokenType.English;
+
+                if (previousTokenType != tokenType)
+                {
+                    previousTokenType = tokenType;
+                    tokensByGroups.Add(currentGroup);
+                    currentGroup = token;
+                }
+                else
+                {
+                    currentGroup += " " + token;
+                }
+            }
+
+            tokensByGroups.Add(currentGroup);
+
+            foreach (var token in tokensByGroups)
+            {
+                var voice = token.isRussian() ? "Microsoft Irina Desktop" : "Microsoft Zira Desktop";
+                speechSynthesizer.SelectVoice(voice);
+                speechSynthesizer.Speak(token);
+            }
+
+            isReading = false;
+            popAndRead();
         }
 
         public void showMessageBox(string msg)
@@ -1259,7 +1378,8 @@ namespace TransparentTwitchChatWPF
             try
             {
                 MessageBox.Show(msg);
-            } catch { }
+            }
+            catch { }
         }
     }
 
