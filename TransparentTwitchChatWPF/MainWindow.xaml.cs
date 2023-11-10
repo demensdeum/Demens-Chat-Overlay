@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -1243,38 +1245,50 @@ namespace TransparentTwitchChatWPF
             _waveOutDevice.Init(_audioFileReader);
         }
 
-        private string getSoundForNick(String nick)
+        string soundsDirectory = SettingsSingleton.Instance.genSettings.SoundClipsFolder;
+
+        private string? AssignFileForNick(String nick)
         {
-            var soundsDirectory = SettingsSingleton.Instance.genSettings.SoundClipsFolder;
+            var allFiles = Directory.GetFiles(soundsDirectory);
+            new Random().Shuffle(allFiles);
+            var randomFiles = allFiles.ToList();
+
+            while (randomFiles.Count > 0)
+            {
+                var file = randomFiles.First();
+                if (soundToNick.ContainsKey(file))
+                {
+                    randomFiles.RemoveAt(0);
+                    continue;
+                }
+                nickToSound[nick] = file;
+                soundToNick[file] = nick;
+                return file;
+            }
+
+            if (allFiles.Length > 0)
+            {
+                var randomFile = allFiles.First();
+                return randomFile;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        private string? GetSoundForNick(String nick)
+        {
             nickToSound["inspectorl2"] = soundsDirectory + "\\\\" + "icq.mp3";
 
             if (nickToSound.ContainsKey(nick))
             {
-                return nickToSound[nick];
-            }
-            else
-            {
-                var allFiles = Directory.GetFiles(soundsDirectory);
-                new Random().Shuffle(allFiles);
-                var randomFiles = allFiles.ToList();
-
-                while (randomFiles.Count > 0)
-                {
-                    var file = randomFiles.First();
-                    if (soundToNick.ContainsKey(file))
-                    {
-                        randomFiles.RemoveAt(0);
-                        continue;
-                    }
-                    nickToSound[nick] = file;
-                    soundToNick[file] = nick;
-                    return file;
+                var soundPath = nickToSound[nick];
+                if  (File.Exists(soundPath)) {
+                    return soundPath;
                 }
-
-                var randomFile = allFiles.First();
-
-                return randomFile;
             }
+
+            return AssignFileForNick(nick);
         }
 
         object isReadingLock = new object();
@@ -1295,7 +1309,7 @@ namespace TransparentTwitchChatWPF
 
         BlockingCollection<Tuple<string, string>> messagesToRead = new BlockingCollection<Tuple<string, string>>();
 
-        void popAndRead()
+        void PopAndRead()
         {
             if (messagesToRead.Count < 1) { 
                 return; 
@@ -1311,28 +1325,32 @@ namespace TransparentTwitchChatWPF
             });
         }
 
-        private void scheduleOrRead(string nick, string message)
+        private void ScheduleOrRead(string nick, string message)
         {
             messagesToRead.Add(new Tuple<string, string>(nick, message));
             if (isReading != true)
             {
-                popAndRead();
+                PopAndRead();
             }
         }
 
-        public void playSound(string nick, string message)
+        public void PlaySound(string nick, string message)
         {
             if (message.isReadable())
             {
-                scheduleOrRead(nick, message);
+                ScheduleOrRead(nick, message);
             }
             else
             {
                 Task.Run(() =>
                 {
-                    var mediaPlayer = new MediaPlayer();
-                    mediaPlayer.Open(new Uri(this.getSoundForNick(nick)));
-                    mediaPlayer.Play();
+                    var soundPath = this.GetSoundForNick(nick);
+                    if (soundPath != null)
+                    {
+                        var mediaPlayer = new MediaPlayer();
+                        mediaPlayer.Open(new Uri(soundPath));
+                        mediaPlayer.Play();
+                    }
                 });
             }
         }
@@ -1386,7 +1404,7 @@ namespace TransparentTwitchChatWPF
                             }
                         if (sameTokenCount <= 3)
                         {
-                            currentGroup += " " + token;
+                            currentGroup += " " + token.Replace("_", " ");
                         }
                     }
                 }
@@ -1402,7 +1420,7 @@ namespace TransparentTwitchChatWPF
             }
 
             isReading = false;
-            popAndRead();
+            PopAndRead();
         }
 
         public void showMessageBox(string msg)
@@ -1497,3 +1515,5 @@ namespace TransparentTwitchChatWPF
         public string SoundClipsFolder { get; set; }
     }
 }
+
+#nullable disable
