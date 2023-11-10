@@ -95,6 +95,7 @@ namespace TransparentTwitchChatWPF
     using System.Text.RegularExpressions;
     using System.Threading;
     using System.Collections.Concurrent;
+    using System.Security.Policy;
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -1140,15 +1141,28 @@ namespace TransparentTwitchChatWPF
     {
         public static bool isRussian(this string text)
         {
+            int numValue;
+            var isNumber = int.TryParse(text, out numValue);
+            if (isNumber)
+            {
+                return true;
+            }
             Regex regex = new Regex(@"[\p{IsCyrillic}]");
             Match match = regex.Match(text);
             var isSuccess = match.Success;
             return isSuccess;
         }
 
-        public static bool isShort(this string text)
+        public static bool isValidUrl(this string url)
         {
-            return text.Length < 3;
+            return Uri.TryCreate(url, UriKind.Absolute, out Uri uriResult)
+                && (uriResult.Scheme == Uri.UriSchemeHttp
+                  || uriResult.Scheme == Uri.UriSchemeHttps);
+        }
+
+        public static bool isReadable(this string text)
+        {
+            return text.Length >= 20 && text.Length <= 60;
         }
     }
 
@@ -1308,7 +1322,11 @@ namespace TransparentTwitchChatWPF
 
         public void playSound(string nick, string message)
         {
-            if (message.isShort())
+            if (message.isReadable())
+            {
+                scheduleOrRead(nick, message);
+            }
+            else
             {
                 Task.Run(() =>
                 {
@@ -1316,10 +1334,6 @@ namespace TransparentTwitchChatWPF
                     mediaPlayer.Open(new Uri(this.getSoundForNick(nick)));
                     mediaPlayer.Play();
                 });
-            }
-            else
-            {
-                scheduleOrRead(nick, message);
             }
         }
 
@@ -1333,7 +1347,6 @@ namespace TransparentTwitchChatWPF
         private void read(string nick, string message)
         {
             isReading = true;
-            message = nick + " говорит: " + message;
 
             var speechSynthesizer = new SpeechSynthesizer();
             speechSynthesizer.Rate = 3;
@@ -1343,6 +1356,9 @@ namespace TransparentTwitchChatWPF
             var tokensByGroups = new List<String>();
             var currentGroup = "";
             var previousTokenType = TextTokenType.None;
+
+            var sameTokenCount = 0;
+            var previousToken = "";
 
             foreach (var token in tokens)
             {
@@ -1356,7 +1372,23 @@ namespace TransparentTwitchChatWPF
                 }
                 else
                 {
-                    currentGroup += " " + token;
+                    if (!token.isValidUrl())
+                    {
+
+                            if (previousToken == token)
+                            {
+                                sameTokenCount += 1;
+                            }
+                            else
+                            {
+                            previousToken = token;
+                                sameTokenCount = 1;
+                            }
+                        if (sameTokenCount <= 3)
+                        {
+                            currentGroup += " " + token;
+                        }
+                    }
                 }
             }
 

@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34221.43
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransparentTwitchChatWPF", "TransparentTwitchChatWPF\TransparentTwitchChatWPF.csproj", "{340C12FD-3B4D-4A37-AB81-5C5786135206}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemensChat", "TransparentTwitchChatWPF\DemensChat.csproj", "{340C12FD-3B4D-4A37-AB81-5C5786135206}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
