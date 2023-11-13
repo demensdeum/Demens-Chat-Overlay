@@ -270,6 +270,11 @@ namespace TransparentTwitchChatWPF
                     this.config.Username = this.tbUsername2.Text;
                 this.config.ChatNotificationSound = this.comboChatSound2.SelectedValue.ToString();
             }
+            else if (this.config.ChatType == (int)ChatTypes.YoutubeLive)
+            {
+                this.config.URL = youtubeURL.Text;
+                SettingsSingleton.Instance.genSettings.CustomURL = this.config.URL;
+            }
 
             this.config.AutoHideBorders  = this.cbAutoHideBorders.IsChecked ?? false;
             this.config.EnableTrayIcon   = this.cbEnableTrayIcon.IsChecked ?? false;
@@ -350,6 +355,7 @@ namespace TransparentTwitchChatWPF
                 this.twitchPopoutChat.Visibility = Visibility.Hidden;
                 this.customURLGrid.Visibility = Visibility.Visible;
                 this.jChatGrid.Visibility = Visibility.Hidden;
+                this.youtubeChatGrid.Visibility = Visibility.Hidden;
 
                 this.tbURL.Text = this.config.URL;
                 this.tbCSS2.Text = this.config.CustomCSS;
@@ -362,6 +368,7 @@ namespace TransparentTwitchChatWPF
                 this.twitchPopoutChat.Visibility = Visibility.Visible;
                 this.customURLGrid.Visibility = Visibility.Hidden;
                 this.jChatGrid.Visibility = Visibility.Hidden;
+                this.youtubeChatGrid.Visibility = Visibility.Hidden;
 
                 if (string.IsNullOrEmpty(SettingsSingleton.Instance.genSettings.TwitchPopoutCSS))
                     this.tbPopoutCSS.Text = CustomCSS_Defaults.TwitchPopoutChat;
@@ -377,6 +384,7 @@ namespace TransparentTwitchChatWPF
                 this.twitchPopoutChat.Visibility = Visibility.Hidden;
                 this.customURLGrid.Visibility = Visibility.Hidden;
                 this.jChatGrid.Visibility = Visibility.Hidden;
+                this.youtubeChatGrid.Visibility = Visibility.Hidden;
 
                 this.tbURL.Text = string.Empty;
 
@@ -395,8 +403,17 @@ namespace TransparentTwitchChatWPF
                 this.twitchPopoutChat.Visibility = Visibility.Hidden;
                 this.customURLGrid.Visibility = Visibility.Hidden;
                 this.jChatGrid.Visibility = Visibility.Visible;
+                this.youtubeChatGrid.Visibility = Visibility.Hidden;
 
                 this.tbURL.Text = string.Empty;
+            }
+            else if (this.config.ChatType == (int)ChatTypes.YoutubeLive)
+            {
+                this.kapChatGrid.Visibility = Visibility.Hidden;
+                this.twitchPopoutChat.Visibility = Visibility.Hidden;
+                this.customURLGrid.Visibility= Visibility.Hidden;
+                this.jChatGrid.Visibility = Visibility.Hidden;
+                this.youtubeChatGrid.Visibility = Visibility.Visible;
             }
         }
 

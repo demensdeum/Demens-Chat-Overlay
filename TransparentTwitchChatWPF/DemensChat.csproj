@@ -124,6 +124,7 @@
       <DependentUpon>ChatFilters.xaml</DependentUpon>
     </Compile>
     <Compile Include="Chats\AbstractChat.cs" />
+    <Compile Include="Chats\YoutubeChat.cs" />
     <Compile Include="Chats\CustomURLChat.cs" />
     <Compile Include="Chats\jChat.cs" />
     <Compile Include="Chats\KapChat.cs" />

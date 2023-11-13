@@ -11,7 +11,8 @@ namespace TransparentTwitchChatWPF
         KapChat = 0,
         TwitchPopout = 1,
         CustomURL = 2,
-        jChat = 3
+        jChat = 3,
+        YoutubeLive = 4
     }
 
     public class WindowSettings

@@ -452,7 +452,7 @@ namespace TransparentTwitchChatWPF
 
         private void webView_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
         {
-
+            System.Console.WriteLine("UHHH");
         }
 
         private async void webView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
@@ -910,6 +910,11 @@ namespace TransparentTwitchChatWPF
                 this.currentChat = new CustomURLChat(ChatTypes.CustomURL);
                 SetCustomChatAddress(SettingsSingleton.Instance.genSettings.CustomURL);
             }
+            else if (SettingsSingleton.Instance.genSettings.ChatType == (int)ChatTypes.YoutubeLive) 
+            {
+                this.currentChat = new YoutubeChat();
+                SetCustomChatAddress(SettingsSingleton.Instance.genSettings.CustomURL);
+            }
             else if ((SettingsSingleton.Instance.genSettings.ChatType == (int)ChatTypes.TwitchPopout) && (!string.IsNullOrEmpty(SettingsSingleton.Instance.genSettings.Username)))
             {
                 this.currentChat = new CustomURLChat(ChatTypes.TwitchPopout);
@@ -925,7 +930,7 @@ namespace TransparentTwitchChatWPF
                 else if (SettingsSingleton.Instance.genSettings.ChatType == (int)ChatTypes.jChat)
                 {
                     this.currentChat = new jChat();
-                    SetCustomChatAddress(SettingsSingleton.Instance.genSettings.jChatURL);
+                    SetCustomChatAddress(SettingsSingleton.Instance.genSettings.CustomURL);
                 }
                 else
                 {
@@ -943,6 +948,11 @@ namespace TransparentTwitchChatWPF
             { // TODO: need to clean this up to determine which type of chat to load better
                 this.currentChat = new jChat();
                 SetCustomChatAddress(SettingsSingleton.Instance.genSettings.jChatURL);
+            }
+            else if (SettingsSingleton.Instance.genSettings.ChatType == (int)ChatTypes.YoutubeLive)
+            {
+                this.currentChat = new YoutubeChat();
+                SetCustomChatAddress(SettingsSingleton.Instance.genSettings.CustomURL);
             }
             else
             {
