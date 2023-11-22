@@ -98,6 +98,8 @@ namespace TransparentTwitchChatWPF
     using System.Threading;
     using System.Collections.Concurrent;
     using System.Security.Policy;
+    using System.Net.Http;
+    using System.Text;
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -1344,11 +1346,17 @@ namespace TransparentTwitchChatWPF
             }
         }
 
+        StreamWriter writer = new StreamWriter("chatLog.txt");
+
         public void PlaySound(string nick, string message)
         {
+            writer.WriteLine(message);
+            writer.Flush();
+
             if (message.isReadable())
             {
-                ScheduleOrRead(nick, message);
+                generateAudio(message);
+                //ScheduleOrRead(nick, message);
             }
             else
             {
@@ -1372,13 +1380,65 @@ namespace TransparentTwitchChatWPF
             English
         };
 
+        private async void generateAudio(string message)
+        {
+            string url = "http://127.0.0.1:5000/generateTTS"; // Убедитесь, что замените это на ваш реальный URL
+
+            var data = new
+            {
+                message = message,
+                is_russian = true
+            };
+
+            using (var httpClient = new HttpClient())
+            {
+                var content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(data), Encoding.UTF8, "application/json");
+
+                var response = await httpClient.PostAsync(url, content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var bytes = await response.Content.ReadAsByteArrayAsync();
+
+                    try
+                    {
+                        Guid uuid = Guid.NewGuid();
+                        string uuidString = uuid.ToString();
+
+
+                        File.WriteAllBytes(uuidString + ".mp3", bytes);
+
+                        Console.WriteLine("Файл успешно сохранен как output.mp3");
+
+                        var mediaPlayer = new MediaPlayer();
+                        mediaPlayer.Open(new Uri("C:\\Users\\Demensdeum\\Documents\\Sources\\Demens-Chat-Overlay\\TransparentTwitchChatWPF\\bin\\x86\\Debug\\"+ uuidString +".mp3"));
+                        mediaPlayer.Play();
+                        mediaPlayer.MediaEnded += (sender, e) =>
+                        {
+                            File.Delete("C:\\Users\\Demensdeum\\Documents\\Sources\\Demens-Chat-Overlay\\TransparentTwitchChatWPF\\bin\\x86\\Debug\\" + uuidString + ".mp3");
+                        };
+                    }
+                    catch
+                    {
+                        Console.WriteLine("AAAAAAAAAAAAA!!!!!!!!!");
+                    }
+
+                }
+                else
+                {
+                    Console.WriteLine($"Ошибка: {response.StatusCode}, {await response.Content.ReadAsStringAsync()}");
+                }
+            }
+        }
+
+
         private void read(string nick, string message)
         {
-            isReading = true;
+           isReading = true;
 
             var speechSynthesizer = new SpeechSynthesizer();
             speechSynthesizer.Rate = 3;
-            var delimiters = new char[] { ' ', ',', '.', '!', '?', '\r', '\n' };
+            var delimiters = new char[] { ' ' };
             var tokens = message.Split(delimiters, StringSplitOptions.RemoveEmptyEntries);
 
             var tokensByGroups = new List<String>();
@@ -1392,7 +1452,7 @@ namespace TransparentTwitchChatWPF
             {
                 var tokenType = token.isRussian() ? TextTokenType.Russian : TextTokenType.English;
 
-                if (previousTokenType != tokenType)
+                if (previousTokenType != tokenType && !token.isValidUrl())
                 {
                     previousTokenType = tokenType;
                     tokensByGroups.Add(currentGroup);
@@ -1402,7 +1462,6 @@ namespace TransparentTwitchChatWPF
                 {
                     if (!token.isValidUrl())
                     {
-
                             if (previousToken == token)
                             {
                                 sameTokenCount += 1;
@@ -1424,9 +1483,14 @@ namespace TransparentTwitchChatWPF
 
             foreach (var token in tokensByGroups)
             {
-                var voice = token.isRussian() ? "Microsoft Irina Desktop" : "Microsoft Zira Desktop";
-                speechSynthesizer.SelectVoice(voice);
-                speechSynthesizer.Speak(token);
+                try
+                {
+                    var voice = token.isRussian() ? "Microsoft Irina Desktop" : "Microsoft Zira Desktop";
+                    speechSynthesizer.SelectVoice(voice);
+                    speechSynthesizer.Speak(token);
+                }
+                catch { // ??
+                }
             }
 
             isReading = false;
